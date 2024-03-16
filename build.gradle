@@ -1,0 +1,38 @@
+plugins {
+    id 'application'
+    id 'eclipse'
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    extraLibs
+}
+
+dependencies {
+    testImplementation 'org.testng:testng:7.7.1'
+    configurations.implementation.extendsFrom(configurations.extraLibs)
+}
+
+application {
+    mainClass = 'lectureinitializer.Main'
+}
+
+java {
+    sourceCompatibility = "1.17"
+    targetCompatibility = "1.17"
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'lectureinitializer.Main'
+    }
+    archiveBaseName = 'lectureinitializer'
+    from { configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) } }
+}
+
+tasks.named('test') {
+    useTestNG()
+}
