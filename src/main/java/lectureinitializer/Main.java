@@ -214,7 +214,7 @@ public class Main {
             reader.readLine();
             reader.readLine();
             final String thirdLine = reader.readLine();
-            if (thirdLine != null && !thirdLine.isBlank()) {
+            if (thirdLine != null && !thirdLine.isBlank() && !"EXAM".equals(thirdLine)) {
                 final int numOfTopics = Integer.parseInt(reader.readLine());
                 final String[] topics = new String[numOfTopics];
                 for (int i = 0; i < numOfTopics; i++) {
