@@ -92,7 +92,6 @@ public class Main {
             root.toFile().getName().substring(3).toLowerCase().startsWith("m") ? "Mettmann" : "Bergisch Gladbach";
         final List<LocalDateTime> dates = Main.toDates(classFile);
         final List<TalkAssignment> assignments = Main.toAssignments(assignmentFile, dates);
-        Collections.reverse(assignments);
         Main.writeBuildFile(protocols);
         try (
             BufferedWriter solutionsWriter = new BufferedWriter(new FileWriter(root.resolve("solutions.csv").toFile()))
