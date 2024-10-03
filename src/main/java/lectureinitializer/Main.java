@@ -22,6 +22,65 @@ public class Main {
         }
     }
 
+    static List<TalkAssignment> toAssignmentsWithDates(
+        final List<TopicAssignment> topicAssignments,
+        final List<LocalDateTime> dates
+    ) {
+        final Map<LocalDate, List<LocalDateTime>> datesByDate =
+            dates.stream().collect(
+                Collectors.toMap(
+                    LocalDateTime::toLocalDate,
+                    d -> List.of(d),
+                    (l1, l2) -> Stream.concat(l1.stream(), l2.stream()).toList()
+                )
+            );
+        int availableDates = dates.size();
+        final int neededDates = topicAssignments.size();
+        final List<LocalDate> keys = new ArrayList<LocalDate>(datesByDate.keySet());
+        Collections.sort(keys);
+        for (final LocalDate key : keys) {
+            final int datesAtDate = datesByDate.get(key).size();
+            if (datesAtDate > availableDates - neededDates) {
+                break;
+            } else {
+                availableDates -= datesAtDate;
+                datesByDate.remove(key);
+            }
+        }
+        final List<TalkAssignment> result = new LinkedList<TalkAssignment>();
+        int i = 0;
+        keys.retainAll(datesByDate.keySet());
+        outer: for (final LocalDate key : keys) {
+            for (final LocalDateTime date : datesByDate.get(key)) {
+                result.add(new TalkAssignment(topicAssignments.get(i), date));
+                i++;
+                if (i == neededDates) {
+                    break outer;
+                }
+            }
+        }
+        return result;
+    }
+
+    static Stream<LocalDateTime> toLocalDateTime(final String dateString) {
+        final int multiplicity = Integer.parseInt(dateString.substring(dateString.length() - 1));
+        final LocalDateTime start =
+            LocalDate.of(
+                2000 + Integer.parseInt(dateString.substring(0, 2)),
+                Integer.parseInt(dateString.substring(2, 4)),
+                Integer.parseInt(dateString.substring(4, 6))
+            ).atTime(Integer.parseInt(dateString.substring(6, 8)), Integer.parseInt(dateString.substring(8, 10)));
+        final List<LocalDateTime> result = new LinkedList<LocalDateTime>();
+        int numOfBreaks = 0;
+        for (int i = 0; i < multiplicity; i++) {
+            if (i > 0 && i % 2 == 0) {
+                numOfBreaks++;
+            }
+            result.add(start.plusMinutes(i * 45 + numOfBreaks * 15));
+        }
+        return result.stream();
+    }
+
     private static void prepareTalk(final File assignmentFile, final File classFile) throws IOException {
         final Path root = assignmentFile.getAbsoluteFile().toPath().getParent();
         final Path protocols = root.resolve("protocols");
@@ -32,7 +91,7 @@ public class Main {
         final String place =
             root.toFile().getName().substring(3).toLowerCase().startsWith("m") ? "Mettmann" : "Bergisch Gladbach";
         final List<LocalDateTime> dates = Main.toDates(classFile);
-        final List<Assignment> assignments = Main.toAssignments(assignmentFile, dates);
+        final List<TalkAssignment> assignments = Main.toAssignments(assignmentFile, dates);
         Collections.reverse(assignments);
         Main.writeBuildFile(protocols);
         try (
@@ -40,7 +99,7 @@ public class Main {
         ) {
             LocalDate current = LocalDate.MIN;
             int numOfTalksWithoutBreak = 0;
-            for (final Assignment assignment : assignments) {
+            for (final TalkAssignment assignment : assignments) {
                 if (!assignment.date().toLocalDate().equals(current)) {
                     current = assignment.date().toLocalDate();
                     Main.writeDateLineToConsole(current);
@@ -70,8 +129,8 @@ public class Main {
             .replaceAll("[^\\x00-\\x7F]", "");
     }
 
-    private static List<Assignment> toAssignments(final File file, final List<LocalDateTime> dates) throws IOException {
-        final List<String[]> assignmentsWithoutDates = new ArrayList<String[]>();
+    private static List<TalkAssignment> toAssignments(final File file, final List<LocalDateTime> dates) throws IOException {
+        final List<TopicAssignment> assignmentsWithoutDates = new ArrayList<TopicAssignment>();
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line = reader.readLine();
             while (line != null && !line.isBlank()) {
@@ -79,21 +138,11 @@ public class Main {
                 if (assignment.length != 2) {
                     throw new IOException("File must contain assignments of the form participant -> topic!");
                 }
-                assignmentsWithoutDates.add(assignment);
+                assignmentsWithoutDates.add(new TopicAssignment(assignment[0].strip(), assignment[1].strip()));
                 line = reader.readLine();
             }
         }
-        Collections.reverse(assignmentsWithoutDates);
-        final List<Assignment> result = new LinkedList<Assignment>();
-        int i = dates.size() - 1;
-        for (final String[] assignment : assignmentsWithoutDates) {
-            result.add(new Assignment(assignment[0].strip(), assignment[1].strip(), dates.get(i)));
-            i--;
-            if (i < 0) {
-                i = 0;
-            }
-        }
-        return result;
+        return Main.toAssignmentsWithDates(assignmentsWithoutDates, dates);
     }
 
     private static List<LocalDateTime> toDates(final File classFile) throws IOException {
@@ -104,38 +153,19 @@ public class Main {
             .toList();
     }
 
-    private static Stream<LocalDateTime> toLocalDateTime(final String dateString) {
-        final int multiplicity = Integer.parseInt(dateString.substring(dateString.length() - 1));
-        final LocalDateTime start =
-            LocalDate.of(
-                2000 + Integer.parseInt(dateString.substring(0, 2)),
-                Integer.parseInt(dateString.substring(2, 4)),
-                Integer.parseInt(dateString.substring(4, 6))
-            ).atTime(Integer.parseInt(dateString.substring(6, 8)), Integer.parseInt(dateString.substring(8, 10)));
-        final List<LocalDateTime> result = new LinkedList<LocalDateTime>();
-        int numOfBreaks = 0;
-        for (int i = 0; i < multiplicity; i++) {
-            if (i > 0 && i % 2 == 0) {
-                numOfBreaks++;
-            }
-            result.add(start.plusMinutes(i * 45 + numOfBreaks * 15));
-        }
-        return result.stream();
-    }
-
-    private static void writeAnnouncementLineToConsole(final Assignment assignment) {
+    private static void writeAnnouncementLineToConsole(final TalkAssignment assignment) {
         System.out.println(
             String.format(
                 "%s-%s: %s (%s)",
                 assignment.date().format(DateTimeFormatter.ofPattern("HH:mm")),
                 assignment.date().plusMinutes(45).format(DateTimeFormatter.ofPattern("HH:mm")),
-                assignment.topic(),
-                assignment.participant()
+                assignment.topicAssignment().topic(),
+                assignment.topicAssignment().participant()
             )
         );
     }
 
-    private static void writeBreakLineToConsole(final Assignment assignment) {
+    private static void writeBreakLineToConsole(final TalkAssignment assignment) {
         System.out.println(
             String.format(
                 "%s-%s: Pause",
@@ -164,9 +194,9 @@ public class Main {
 
     private static void writeLineToSolutionFile(
         final BufferedWriter solutionsWriter,
-        final Assignment assignment
+        final TalkAssignment assignment
     ) throws IOException {
-        solutionsWriter.write(assignment.participant());
+        solutionsWriter.write(assignment.topicAssignment().participant());
         solutionsWriter.write(";\n");
     }
 
@@ -245,9 +275,9 @@ public class Main {
         final TalkMode talkMode,
         final Subject subject,
         final String place,
-        final Assignment assignment
+        final TalkAssignment assignment
     ) throws IOException {
-        final String[] nameParts = assignment.participant().split(" ");
+        final String[] nameParts = assignment.topicAssignment().participant().split(" ");
         final String lastName = nameParts[nameParts.length - 1];
         final String protocol = String.format("protokoll%s%s.tex", subject.shortName(), Main.toASCII(lastName));
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(protocols.resolve(protocol).toFile()))) {
@@ -257,10 +287,10 @@ public class Main {
             writer.write(subject.name());
             writer.write("}\n");
             writer.write("\\newcommand{\\student}{");
-            writer.write(assignment.participant());
+            writer.write(assignment.topicAssignment().participant());
             writer.write("}\n");
             writer.write("\\newcommand{\\presentationtitle}{");
-            writer.write(assignment.topic());
+            writer.write(assignment.topicAssignment().topic());
             writer.write("}\n");
             writer.write("\\newcommand{\\presentationdate}{");
             writer.write(String.valueOf(assignment.date().getDayOfMonth()));
