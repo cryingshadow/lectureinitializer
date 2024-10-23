@@ -398,6 +398,71 @@ public class Main {
                 writer.write("\\end{itemize}%\n");
                 writer.write("\\evaluation{}{40}\n");
                 break;
+            case TALK50SCIENCE:
+                writer.write("\\newcommand{\\presentationUnderstandability}{%\n");
+                writer.write("\\understandingstructurev{}\n");
+                writer.write("\\understandinglogicv{}\n");
+                writer.write("\\understandingspeechv{}\n");
+                writer.write("\\understandingexamplesv{}\n");
+                writer.write("\\understandingvisualizationv{}\n");
+                writer.write("\\evaluationpartresult{25}\n");
+                writer.write("}\n\n");
+                writer.write("\\newcommand{\\presentationDepth}{%\n");
+                writer.write("\\contenttimeiii{}\n");
+                writer.write("\\contentdepthiii{}\n");
+                writer.write("\\contentbreadthiii{}\n");
+                writer.write("\\contentcorrectnessiii{}\n");
+                writer.write("\\contentquestionsiii{}\n");
+                writer.write("\\evaluationpartresult{15}\n");
+                writer.write("}\n\n");
+                writer.write("\\newcommand{\\presentationApplication}{%\n");
+                writer.write("\\applicationrelevanceiv{}\n");
+                writer.write("\\applicationdemonstrationiii{}\n");
+                writer.write("\\applicationusersiii{}\n");
+                writer.write("\\evaluationpartresult{10}\n");
+                writer.write("}\n\n");
+                writer.write("\\newcommand{\\paperEvaluation}{%\n");
+                writer.write("\\goali{}\n");
+                writer.write("\\contributionsi{}\n");
+                writer.write("\\structurequalityi{}\n");
+                writer.write("\\basicsmatchingi{}\n");
+                writer.write("\\conclusioni{}\n\n");
+                writer.write("\\literatureamounti{}\n");
+                writer.write("\\literaturequalityii{}\n");
+                writer.write("\\relatedamounti{}\n");
+                writer.write("\\relatedqualityii{}\n");
+                writer.write("\\quotingdensityii{}\n");
+                writer.write("\\methodapplicationii{}\n");
+                writer.write("\\methodintroi{}\n");
+                writer.write("\\objectivityi{}\n");
+                writer.write("\\reliabilityi{}\n");
+                writer.write("\\validityi{}\n");
+                writer.write("\\comprehensibilityi{}\n\n");
+                writer.write("Folgende inhaltliche Beiträge wurden für die Arbeit ausgewählt:\n");
+                writer.write("\\begin{itemize}\n");
+                writer.write("\\item Beitrag 1\n");
+                writer.write("\\end{itemize}\n");
+                writer.write("\\innovativenessii{}\n");
+                writer.write("\\relevanceii{}\n");
+                writer.write("\\levelii{}\n");
+                writer.write("\\applicabilityii{}\n");
+                writer.write("\\valueii{}\n\n");
+                writer.write("\\appearancei{}\n");
+                writer.write("\\spellingautoi{}\n");
+                writer.write("\\languagei{}\n");
+                writer.write("\\figuresi{}\n");
+                writer.write("\\literaturestylei{}\n\n");
+                writer.write("\\evaluationpartresult{35}\n");
+                writer.write("}\n\n");
+                writer.write("\\newcommand{\\reviewi}{% max 5\n");
+                writer.write("\\addevaluationpart{0}\n");
+                writer.write("}\n\n");
+                writer.write("\\newcommand{\\reviewii}{% max 5\n");
+                writer.write("\\addevaluationpart{0}\n");
+                writer.write("}\n\n");
+                writer.write("\\newcommand{\\reviewiii}{% max 5\n");
+                writer.write("\\addevaluationpart{0}\n");
+                break;
             }
             writer.write("}\n\n");
             writer.write("\\newcommand{\\totalReview}{%\n");
@@ -405,7 +470,11 @@ public class Main {
                 "Insgesamt wurden \\evaluationpoints{} Punkte erreicht und das Gesamturteil lautet: \\grade\n"
             );
             writer.write("}\n\n");
-            writer.write("\\input{../../../../../../templates/protocol/protocol.tex}\n");
+            if (talkMode == TalkMode.TALK50SCIENCE) {
+                writer.write("\\input{../../../../../../templates/protocol/protocolScience.tex}\n");
+            } else {
+                writer.write("\\input{../../../../../../templates/protocol/protocol.tex}\n");
+            }
         }
     }
 
