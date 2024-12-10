@@ -85,6 +85,8 @@ public class Main {
         final Path root = assignmentFile.getAbsoluteFile().toPath().getParent();
         final Path protocols = root.resolve("protocols");
         protocols.toFile().mkdir();
+        final Path quizAnswers = root.resolve("quizAnswers");
+        quizAnswers.toFile().mkdir();
         final File metaFile = root.getParent().resolve("meta.txt").toFile();
         final Subject subject = Subject.fromFile(metaFile);
         final TalkMode talkMode = TalkMode.fromFile(metaFile);
@@ -94,7 +96,8 @@ public class Main {
         final List<TalkAssignment> assignments = Main.toAssignments(assignmentFile, dates);
         Main.writeBuildFile(protocols);
         try (
-            BufferedWriter solutionsWriter = new BufferedWriter(new FileWriter(root.resolve("solutions.csv").toFile()))
+            BufferedWriter solutionsWriter =
+                new BufferedWriter(new FileWriter(root.resolve("quizSolutions.csv").toFile()))
         ) {
             LocalDate current = LocalDate.MIN;
             int numOfTalksWithoutBreak = 0;
@@ -111,6 +114,22 @@ public class Main {
                 numOfTalksWithoutBreak++;
                 Main.writeLineToSolutionFile(solutionsWriter, assignment);
                 Main.writeProtocolFile(protocols, talkMode, subject, place, assignment);
+                final String[] nameParts = assignment.topicAssignment().participant().split(" ");
+                final String lastName = nameParts[nameParts.length - 1].toLowerCase();
+                try (
+                    BufferedWriter quizAnswersWriter =
+                        new BufferedWriter(new FileWriter(quizAnswers.resolve(lastName + ".csv").toFile()))
+                ) {
+                    quizAnswersWriter.write(assignment.topicAssignment().participant());
+                    quizAnswersWriter.write("\n");
+                    for (final TalkAssignment assignment2 : assignments) {
+                        if (assignment2.equals(assignment)) {
+                            continue;
+                        }
+                        quizAnswersWriter.write(assignment2.topicAssignment().participant());
+                        quizAnswersWriter.write(";\n");
+                    }
+                }
             }
         }
     }
@@ -197,6 +216,7 @@ public class Main {
     ) throws IOException {
         solutionsWriter.write(assignment.topicAssignment().participant());
         solutionsWriter.write(";\n");
+        //TODO
     }
 
     private static void writeParticipantsLists(final File classFile) throws IOException {
