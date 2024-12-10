@@ -360,12 +360,7 @@ public class Main {
                 Main.writeQuizCommands(writer);
                 writer.write("\\evaluationpartresult{20}\n");
                 writer.write("}\n\n");
-                writer.write("\\newcommand{\\additionalEvaluation}{%\n");
-                writer.write("\\contributions\n");
-                writer.write("Die individuellen Beiträge umfassten:\n");
-                writer.write("\\begin{itemize}\n");
-                writer.write("\\item \n");
-                writer.write("\\end{itemize}%\n");
+                writer.write("\\newcommand{\\additionalEvaluation}{}\n\n");
                 break;
             case TALK40QUIZ10:
             case TALK40QUIZ20:
@@ -414,9 +409,9 @@ public class Main {
                 writer.write("\\contributions\n");
                 writer.write("Die individuellen Beiträge umfassten:\n");
                 writer.write("\\begin{itemize}\n");
-                writer.write("\\item \n");
+                writer.write("\\item \\addevaluationpart{0}\n");
                 writer.write("\\end{itemize}%\n");
-                writer.write("\\evaluation{}{40}\n");
+                writer.write("\\evaluationpartresult{40}\n");
                 break;
             case TALK50SCIENCE:
                 writer.write("\\newcommand{\\presentationUnderstandability}{%\n");
