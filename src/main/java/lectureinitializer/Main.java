@@ -409,7 +409,7 @@ public class Main {
                 writer.write("\\contributions\n");
                 writer.write("Die individuellen Beiträge umfassten:\n");
                 writer.write("\\begin{itemize}\n");
-                writer.write("\\item \\addevaluationpart{0}\n");
+                writer.write("\\item \\contributionvalue{0}\n");
                 writer.write("\\end{itemize}%\n");
                 writer.write("\\evaluationpartresult{40}\n");
                 break;
