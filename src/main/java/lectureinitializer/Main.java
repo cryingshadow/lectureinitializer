@@ -1,24 +1,50 @@
 package lectureinitializer;
 
 import java.io.*;
+import java.lang.reflect.*;
 import java.nio.file.*;
 import java.time.*;
 import java.time.format.*;
 import java.util.*;
 import java.util.stream.*;
 
+import clit.*;
+
 public class Main {
 
-    public static void main(final String[] args) throws IOException {
+    private static final String HELP = "Allowed combinations: -c, -c and -a, -p and -e.";
+
+    public static void main(final String[] args)
+    throws IOException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        final CLITamer<Flag> tamer = new CLITamer<Flag>(Flag.class);
         if (args == null || args.length < 1) {
-            System.out.println("Aufruf mit CLASSFILE [ASSIGNMENT]");
+            System.out.println(tamer.getParameterDescriptions());
+            System.out.println(Main.HELP);
             return;
         }
-        final File file = new File(args[0]);
-        if (args.length == 2) {
-            Main.prepareTalk(new File(args[1]), file);
+        final Parameters<Flag> options = tamer.parse(args);
+        final int optionsSize = options.size();
+        if (
+            optionsSize > 2
+            || optionsSize < 1
+            || (
+                options.containsAtLeastOne(Flag.CLASSFILE, Flag.ASSIGNMENT)
+                && options.containsAtLeastOne(Flag.PARTICIPANTS, Flag.EXPORT)
+            ) || (optionsSize == 1 && !options.keySet().iterator().next().equals(Flag.CLASSFILE))
+        ) {
+            System.out.println(tamer.getParameterDescriptions());
+            System.out.println(Main.HELP);
+            return;
+        }
+        if (options.containsKey(Flag.CLASSFILE)) {
+            final File classFile = new File(options.get(Flag.CLASSFILE));
+            if (options.containsKey(Flag.ASSIGNMENT)) {
+                Main.prepareTalk(new File(options.get(Flag.ASSIGNMENT)), classFile);
+            } else {
+                Main.writeParticipantsLists(classFile);
+            }
         } else {
-            Main.writeParticipantsLists(file);
+            Main.createClassFiles(new File(options.get(Flag.PARTICIPANTS)), new File(options.get(Flag.EXPORT)));
         }
     }
 
@@ -81,6 +107,38 @@ public class Main {
         return result.stream();
     }
 
+    private static void createClassFiles(final File participantsList, final File calendarExport) throws IOException {
+        // TODO Auto-generated method stub
+
+    }
+
+    private static String extractTopic(final String topicEntry) {
+        if (topicEntry.contains(")")) {
+            return topicEntry.substring(topicEntry.indexOf(')') + 2).strip();
+        }
+        return topicEntry.strip();
+    }
+
+    private static Optional<String> getSolution(
+        final String topic,
+        final File metaFile,
+        final int numberOfTopics
+    ) throws IOException {
+        final Path path = metaFile.toPath();
+        final Optional<Path> solutionFile =
+            Files
+            .lines(path)
+            .skip(4)
+            .limit(numberOfTopics)
+            .map(line -> line.split(";"))
+            .filter(split -> topic.equals(split[0]))
+            .map(split -> path.getParent().resolve(split[1]))
+            .findAny();
+        return solutionFile.isEmpty() ?
+            Optional.empty() :
+                Optional.of(Files.lines(solutionFile.get()).findFirst().get().substring(1));
+    }
+
     private static void prepareTalk(final File assignmentFile, final File classFile) throws IOException {
         final Path root = assignmentFile.getAbsoluteFile().toPath().getParent();
         final Path protocols = root.resolve("protocols");
@@ -90,6 +148,7 @@ public class Main {
         final File metaFile = root.getParent().resolve("meta.txt").toFile();
         final Subject subject = Subject.fromFile(metaFile);
         final TalkMode talkMode = TalkMode.fromFile(metaFile);
+        final int numberOfTopics = Integer.parseInt(Files.lines(metaFile.toPath()).skip(3).findFirst().get());
         final String place =
             root.toFile().getName().substring(3).toLowerCase().startsWith("m") ? "Mettmann" : "Bergisch Gladbach";
         final List<LocalDateTime> dates = Main.toDates(classFile);
@@ -112,7 +171,7 @@ public class Main {
                 }
                 Main.writeAnnouncementLineToConsole(assignment);
                 numOfTalksWithoutBreak++;
-                Main.writeLineToSolutionFile(solutionsWriter, assignment);
+                Main.writeLineToSolutionFile(solutionsWriter, assignment, metaFile, numberOfTopics);
                 Main.writeProtocolFile(protocols, talkMode, subject, place, assignment);
                 final String[] nameParts = assignment.topicAssignment().participant().split(" ");
                 final String lastName = nameParts[nameParts.length - 1].toLowerCase();
@@ -156,7 +215,9 @@ public class Main {
                 if (assignment.length != 2) {
                     throw new IOException("File must contain assignments of the form participant -> topic!");
                 }
-                assignmentsWithoutDates.add(new TopicAssignment(assignment[0].strip(), assignment[1].strip()));
+                assignmentsWithoutDates.add(
+                    new TopicAssignment(assignment[0].strip(), Main.extractTopic(assignment[1]))
+                );
                 line = reader.readLine();
             }
         }
@@ -212,11 +273,16 @@ public class Main {
 
     private static void writeLineToSolutionFile(
         final BufferedWriter solutionsWriter,
-        final TalkAssignment assignment
+        final TalkAssignment assignment,
+        final File metaFile,
+        final int numberOfTopics
     ) throws IOException {
         solutionsWriter.write(assignment.topicAssignment().participant());
-        solutionsWriter.write(";\n");
-        //TODO
+        solutionsWriter.write(";");
+        final Optional<String> solution =
+            Main.getSolution(assignment.topicAssignment().topic(), metaFile, numberOfTopics);
+        solutionsWriter.write(solution.orElseGet(() -> ""));
+        solutionsWriter.write("\n");
     }
 
     private static void writeParticipantsLists(final File classFile) throws IOException {
@@ -267,7 +333,7 @@ public class Main {
                 final int numOfTopics = Integer.parseInt(reader.readLine());
                 final String[] topics = new String[numOfTopics];
                 for (int i = 0; i < numOfTopics; i++) {
-                    topics[i] = reader.readLine();
+                    topics[i] = reader.readLine().split(";")[0];
                 }
                 try (
                     BufferedWriter writer = new BufferedWriter(new FileWriter(root.resolve("preferences.txt").toFile()))

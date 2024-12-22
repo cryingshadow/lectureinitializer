@@ -12,6 +12,7 @@ configurations {
 }
 
 dependencies {
+    extraLibs fileTree('libs') { include '*.jar' }
     testImplementation 'org.testng:testng:7.7.1'
     configurations.implementation.extendsFrom(configurations.extraLibs)
 }
