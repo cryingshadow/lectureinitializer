@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.stream.*;
 
 import clit.*;
+import ocp.*;
 
 public class Main {
 
@@ -107,9 +108,56 @@ public class Main {
         return result.stream();
     }
 
-    private static void createClassFiles(final File participantsList, final File calendarExport) throws IOException {
-        // TODO Auto-generated method stub
+    private static File computeClassFile(
+        final String lecture,
+        final List<OCEntry> calendarEntries,
+        final Path lecturesPath
+    ) {
+        final String folder = Main.folderForLecture(lecture.substring(0, lecture.indexOf('|') - 1));
+        final String classFileName = Main.toClassFileName(lecture, calendarEntries);
+        return lecturesPath.resolve(folder).resolve("classes").resolve(classFileName).toFile();
+    }
 
+    private static void createClassFiles(final File participantsList, final File calendarExport) throws IOException {
+        final Map<String, List<String>> participantsByEvent = Main.parseParticipantsList(participantsList);
+        final Map<String, List<OCEntry>> calendarEntriesByEvent = Main.parseCalendarExport(calendarExport);
+        for (final Map.Entry<String, List<String>> participantsEntries : participantsByEvent.entrySet()) {
+            final String lecture = participantsEntries.getKey();
+            if (calendarEntriesByEvent.containsKey(lecture)) {
+                final List<OCEntry> calendarEntries = calendarEntriesByEvent.get(lecture);
+                final File classFile =
+                    Main.computeClassFile(
+                        lecture,
+                        calendarEntries,
+                        participantsList.toPath().toAbsolutePath().getParent()
+                    );
+                if (classFile.exists()) {
+                    continue;
+                }
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(classFile))) {
+                    writer.write(String.valueOf(participantsEntries.getValue().size()));
+                    writer.write("\n");
+                    for (final String participant : participantsEntries.getValue()) {
+                        writer.write(participant);
+                        writer.write("\n");
+                    }
+                    writer.write(String.valueOf(calendarEntries.size()));
+                    writer.write("\n");
+                    for (final OCEntry calendarEntry : calendarEntries) {
+                        writer.write(Main.toClassFileLine(calendarEntry));
+                        writer.write("\n");
+                    }
+                }
+            }
+        }
+    }
+
+    private static String extractLecture(final String line, final BufferedReader reader) throws IOException {
+        String lectureLine = line;
+        while (lectureLine.chars().filter(i -> i == '|').count() != 2) {
+            lectureLine += reader.readLine();
+        }
+        return lectureLine.substring(0, line.lastIndexOf('|') - 1);
     }
 
     private static String extractTopic(final String topicEntry) {
@@ -117,6 +165,37 @@ public class Main {
             return topicEntry.substring(topicEntry.indexOf(')') + 2).strip();
         }
         return topicEntry.strip();
+    }
+
+    private static String folderForLecture(final String lecture) {
+        switch (lecture) {
+        case "Advanced Software Engineering":
+            return "AdvancedSoftwareEngineering";
+        case "Aktuelle Trends in der Programmierung":
+            return "AktuelleTrendsInDerProgrammierung";
+        case "Algorithmen und Datenstrukturen":
+            return "AlgorithmenUndDatenstrukturen";
+        case "Geschäftsprozessmanagement":
+            return "Geschäftsprozessmanagement";
+        case "Grundlagen der Informatik":
+            return "GrundlagenDerInformatik";
+        case "Operations Research":
+            return "OperationsResearch";
+        case "Programmierung I":
+            return "Programmierung_I";
+        case "Programmierung II":
+            return "Programmierung_II";
+        case "Software Engineering Project":
+            return "SoftwareEngineeringProject";
+        case "Softwaremodeling & Architecture":
+            return "SoftwareModelingAndArchitecture";
+        case "Software Testing & DevOps":
+            return "SoftwareTestingAndDevOps";
+        case "Technologie-Trends":
+            return "TechnologieTrends";
+        default:
+            throw new IllegalArgumentException(String.format("Lecture %s not found!", lecture));
+        }
     }
 
     private static Optional<String> getSolution(
@@ -137,6 +216,42 @@ public class Main {
         return solutionFile.isEmpty() ?
             Optional.empty() :
                 Optional.of(Files.lines(solutionFile.get()).findFirst().get().substring(1));
+    }
+
+    private static Map<String, List<OCEntry>> parseCalendarExport(final File calendarExport) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(calendarExport))) {
+            return OCEntry.parseAndGroup(reader, LectureExtractor.INSTANCE);
+        }
+    }
+
+    private static Map<String, List<String>> parseParticipantsList(final File participantsList) throws IOException {
+        final Map<String, List<String>> result = new LinkedHashMap<String, List<String>>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(participantsList))) {
+            String line = reader.readLine();
+            String currentLecture = Main.extractLecture(line, reader);
+            List<String> currentParticipants = new LinkedList<String>();
+            line = reader.readLine();
+            while (line != null) {
+                if (line.isBlank() || !line.startsWith("Seite") && !line.matches("\\w\\w\\w\\w\\d\\d\\d\\w .+")) {
+                    line = reader.readLine();
+                    continue;
+                }
+                if (line.startsWith("Seite")) {
+                    reader.readLine();
+                    line = reader.readLine().substring(1);
+                    if (!line.isBlank() && !currentLecture.equals(Main.extractLecture(line, reader))) {
+                        result.put(currentLecture, currentParticipants);
+                        currentLecture = Main.extractLecture(line, reader);
+                        currentParticipants = new LinkedList<String>();
+                    }
+                } else {
+                    currentParticipants.add(line.substring(9));
+                }
+                line = reader.readLine();
+            }
+            result.put(currentLecture, currentParticipants);
+        }
+        return result;
     }
 
     private static void prepareTalk(final File assignmentFile, final File classFile) throws IOException {
@@ -224,12 +339,65 @@ public class Main {
         return Main.toAssignmentsWithDates(assignmentsWithoutDates, dates);
     }
 
+    private static String toClassFileLine(final OCEntry calendarEntry) {
+        final LocalDateTime start = calendarEntry.start();
+        return String.format(
+            "%02d%02d%02d%02d%02d%d",
+            start.getYear() % 100,
+            start.getMonthValue(),
+            start.getDayOfMonth(),
+            start.getHour(),
+            start.getMinute(),
+            Duration.between(start, calendarEntry.end()).toMinutes() / 45
+        );
+    }
+
+    private static String toClassFileName(final String lecture, final List<OCEntry> calendarEntries) {
+        final String[] groups = lecture.substring(lecture.indexOf('|') + 2).split(", ");
+        final TreeSet<String> prefixes = new TreeSet<String>();
+        final TreeSet<String> infixes = new TreeSet<String>();
+        final TreeSet<Integer> years = new TreeSet<Integer>();
+        final TreeSet<String> suffixes = new TreeSet<String>();
+        for (final String group : groups) {
+            prefixes.add(group.substring(0, 2).toLowerCase());
+            infixes.add(group.substring(2, 4).toLowerCase());
+            years.add(Integer.parseInt(group.substring(4, 7)));
+            suffixes.add(group.substring(7).toLowerCase());
+        }
+        final StringBuilder result = new StringBuilder();
+        result.append(Main.toQuarter(calendarEntries));
+        for (final String prefix : prefixes) {
+            result.append(prefix);
+        }
+        for (final String infix : infixes) {
+            result.append(infix);
+        }
+        for (final Integer year : years) {
+            result.append(String.valueOf(year));
+        }
+        for (final String suffix : suffixes) {
+            result.append(suffix);
+        }
+        result.append(".txt");
+        return result.toString();
+    }
+
     private static List<LocalDateTime> toDates(final File classFile) throws IOException {
         return
             Arrays
             .stream(ParticipantsAndDates.fromFile(classFile).dates())
             .flatMap(Main::toLocalDateTime)
             .toList();
+    }
+
+    private static String toQuarter(final List<OCEntry> calendarEntries) {
+        final List<OCEntry> sorted = new ArrayList<OCEntry>(calendarEntries);
+        Collections.sort(sorted);
+        final OCEntry calendarEntry = sorted.getFirst();
+        final int year = calendarEntry.start().getYear() % 100;
+        final int quarter =
+            calendarEntry.start().getMonthValue() / 3 + (calendarEntry.start().getMonthValue() % 3 == 0 ? 0 : 1);
+        return String.format("%02d%d", year, quarter);
     }
 
     private static void writeAnnouncementLineToConsole(final TalkAssignment assignment) {
