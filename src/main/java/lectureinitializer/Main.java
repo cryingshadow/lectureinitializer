@@ -210,6 +210,7 @@ public class Main {
             .skip(4)
             .limit(numberOfTopics)
             .map(line -> line.split(";"))
+            .filter(split -> split.length == 2)
             .filter(split -> topic.equals(split[0]))
             .map(split -> path.getParent().resolve(split[1]))
             .findAny();
