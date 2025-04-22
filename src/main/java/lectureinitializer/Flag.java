@@ -10,7 +10,11 @@ public enum Flag implements Parameter {
 
     EXPORT("e", "export", "CSV-export of the outlook calendar."),
 
-    PARTICIPANTS("p", "participants", "File containing the participants of lectures.");
+    OUTPUT("o", "output", "File for output."),
+
+    PARTICIPANTS("p", "participants", "File containing the participants of lectures."),
+
+    QUIZ("q", "quiz", "File containing quiz questions.");
 
     private final String description;
 

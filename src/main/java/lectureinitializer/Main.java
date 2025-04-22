@@ -13,28 +13,36 @@ import ocp.*;
 
 public class Main {
 
-    private static final String HELP = "Allowed combinations: -c, -c and -a, -p and -e.";
+    private static final List<Set<Flag>> ALLOWED_COMBINATIONS =
+        List.of(
+            Set.of(Flag.CLASSFILE),
+            Set.of(Flag.CLASSFILE, Flag.ASSIGNMENT),
+            Set.of(Flag.PARTICIPANTS, Flag.EXPORT),
+            Set.of(Flag.QUIZ, Flag.OUTPUT)
+        );
+
+    public static String escapeForLaTeX(final String text) {
+        return text.replaceAll("\\\\", "\\\\textbackslash")
+            .replaceAll("([&\\$%\\{\\}_#])", "\\\\$1")
+            .replaceAll("~", "\\\\textasciitilde{}")
+            .replaceAll("\\^", "\\\\textasciicircum{}")
+            .replaceAll("\\\\textbackslash", "\\\\textbackslash{}")
+            .replaceAll("([^\\\\])\"", "$1''")
+            .replaceAll("^\"", "''");
+    }
 
     public static void main(final String[] args)
     throws IOException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         final CLITamer<Flag> tamer = new CLITamer<Flag>(Flag.class);
         if (args == null || args.length < 1) {
             System.out.println(tamer.getParameterDescriptions());
-            System.out.println(Main.HELP);
+            System.out.println(Main.helpText());
             return;
         }
         final Parameters<Flag> options = tamer.parse(args);
-        final int optionsSize = options.size();
-        if (
-            optionsSize > 2
-            || optionsSize < 1
-            || (
-                options.containsAtLeastOne(Flag.CLASSFILE, Flag.ASSIGNMENT)
-                && options.containsAtLeastOne(Flag.PARTICIPANTS, Flag.EXPORT)
-            ) || (optionsSize == 1 && !options.keySet().iterator().next().equals(Flag.CLASSFILE))
-        ) {
+        if (!Main.ALLOWED_COMBINATIONS.contains(options.keySet())) {
             System.out.println(tamer.getParameterDescriptions());
-            System.out.println(Main.HELP);
+            System.out.println(Main.helpText());
             return;
         }
         if (options.containsKey(Flag.CLASSFILE)) {
@@ -44,8 +52,10 @@ public class Main {
             } else {
                 Main.writeParticipantsLists(classFile);
             }
-        } else {
+        } else if (options.containsKey(Flag.PARTICIPANTS)) {
             Main.createClassFiles(new File(options.get(Flag.PARTICIPANTS)), new File(options.get(Flag.EXPORT)));
+        } else {
+            Main.transformQuizFile(new File(options.get(Flag.QUIZ)), new File(options.get(Flag.OUTPUT)));
         }
     }
 
@@ -219,6 +229,20 @@ public class Main {
                 Optional.of(Files.lines(solutionFile.get()).findFirst().get().substring(1));
     }
 
+    private static String helpText() {
+        return String.format(
+            "Allowed combinations: %s",
+            Main.ALLOWED_COMBINATIONS
+            .stream()
+            .map(set ->
+                set
+                .stream()
+                .map(flag -> "-" + flag.shortName())
+                .collect(Collectors.joining(" and "))
+            ).collect(Collectors.joining(", "))
+        );
+    }
+
     private static Map<String, List<OCEntry>> parseCalendarExport(final File calendarExport) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(calendarExport))) {
             return OCEntry.parseAndGroup(reader, LectureExtractor.INSTANCE);
@@ -253,6 +277,37 @@ public class Main {
             result.put(currentLecture, currentParticipants);
         }
         return result;
+    }
+
+    private static List<QuizQuestion> parseQuizQuestions(final Iterator<String> iterator) {
+        final List<QuizQuestion> questions = new ArrayList<QuizQuestion>();
+        int counter = 0;
+        String question = null;
+        String correctAnswer = null;
+        List<String> wrongAnswers = new ArrayList<String>();
+        while (iterator.hasNext()) {
+            final String line = iterator.next();
+            if (counter == 0) {
+                question = Main.escapeForLaTeX(line.strip().replaceAll("^\\d+(\\.|\\)|:|\\s)+", ""));
+            } else {
+                final String stripped =
+                    Main.escapeForLaTeX(line.strip().replaceAll("^(\\d|[abcdABCD])(\\.|\\)|:|\\s)+", ""));
+                if (stripped.toLowerCase().endsWith("(richtig)")) {
+                    correctAnswer = stripped.substring(0, stripped.length() - 9).strip();
+                } else {
+                    wrongAnswers.add(stripped);
+                }
+            }
+            counter++;
+            if (counter > 4) {
+                Collections.shuffle(wrongAnswers);
+                questions.add(new QuizQuestion(question, correctAnswer, wrongAnswers));
+                wrongAnswers = new ArrayList<String>();
+                counter = 0;
+            }
+        }
+        Collections.shuffle(questions);
+        return questions;
     }
 
     private static void prepareTalk(final File assignmentFile, final File classFile) throws IOException {
@@ -399,6 +454,50 @@ public class Main {
         final int quarter =
             calendarEntry.start().getMonthValue() / 3 + (calendarEntry.start().getMonthValue() % 3 == 0 ? 0 : 1);
         return String.format("%02d%d", year, quarter);
+    }
+
+    private static void transformQuizFile(final File quiz, final File output) throws IOException {
+        final List<String> lines = Files.lines(quiz.toPath()).filter(line -> !line.isBlank()).toList();
+        final Iterator<String> iterator = lines.iterator();
+        final String topic = iterator.next();
+        final List<QuizQuestion> questions = Main.parseQuizQuestions(iterator);
+        final Random random = new Random();
+        final List<Character> correctAnswers = new LinkedList<Character>();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(output))) {
+            writer.write("\\documentclass[12pt]{article}\n\n");
+            writer.write("\\input{../../../../../../templates/mctests.tex}\n\n");
+            writer.write("\\begin{document}\n\n");
+            writer.write("\\newtest{");
+            writer.write(topic);
+            writer.write("}\n\n");
+            for (final QuizQuestion question : questions) {
+                writer.write("\\question{");
+                writer.write(question.question());
+                writer.write("}{%\n");
+                int skip = random.nextInt(4);
+                for (int i = 0; i < 3; i++) {
+                    writer.write("\\item ");
+                    if (skip == 0) {
+                        correctAnswers.add((char)('a' + i));
+                        writer.write(question.correctAnswer());
+                        writer.write("\n\\item ");
+                    }
+                    writer.write(question.wrongAnswers().get(i));
+                    skip--;
+                    writer.write("\n");
+                }
+                if (skip == 0) {
+                    correctAnswers.add('d');
+                    writer.write("\\item ");
+                    writer.write(question.correctAnswer());
+                    writer.write("\n");
+                }
+                writer.write("}{}\n\n");
+            }
+            writer.write("% ");
+            writer.write(correctAnswers.stream().map(String::valueOf).collect(Collectors.joining(";")));
+            writer.write("\n\n\\end{document}\n\n");
+        }
     }
 
     private static void writeAnnouncementLineToConsole(final TalkAssignment assignment) {
