@@ -746,6 +746,7 @@ public class Main {
                 writer.write("\\item \\contributionvalue{0}\n");
                 writer.write("\\end{itemize}%\n");
                 writer.write("\\evaluationpartresult{40}\n");
+                writer.write("}\n\n");
                 break;
             case TALK50SCIENCE:
                 writer.write("\\newcommand{\\presentationUnderstandability}{%\n");
@@ -811,9 +812,9 @@ public class Main {
                 writer.write("}\n\n");
                 writer.write("\\newcommand{\\reviewiii}{% max 5\n");
                 writer.write("\\addevaluationpart{0}\n");
+                writer.write("}\n\n");
                 break;
             }
-            writer.write("}\n\n");
             writer.write("\\newcommand{\\totalReview}{%\n");
             writer.write(
                 "Insgesamt wurden \\evaluationpoints{} Punkte erreicht und das Gesamturteil lautet: \\grade\n"
