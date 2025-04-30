@@ -477,10 +477,14 @@ public class Main {
                 int skip = random.nextInt(4);
                 for (int i = 0; i < 3; i++) {
                     writer.write("\\item ");
+                    writer.write('A' + i + (skip < 0 ? 1 : 0));
+                    writer.write(") ");
                     if (skip == 0) {
                         correctAnswers.add((char)('a' + i));
                         writer.write(question.correctAnswer());
                         writer.write("\n\\item ");
+                        writer.write('A' + i + 1);
+                        writer.write(") ");
                     }
                     writer.write(question.wrongAnswers().get(i));
                     skip--;
@@ -488,7 +492,7 @@ public class Main {
                 }
                 if (skip == 0) {
                     correctAnswers.add('d');
-                    writer.write("\\item ");
+                    writer.write("\\item D) ");
                     writer.write(question.correctAnswer());
                     writer.write("\n");
                 }
