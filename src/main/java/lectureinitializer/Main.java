@@ -659,7 +659,11 @@ public class Main {
             writer.write("}\n");
             writer.write("\\newcommand{\\presentationplace}{");
             writer.write(place);
-            writer.write("}\n\n");
+            writer.write("}\n");
+            if (talkMode == TalkMode.TALK80QUIZ20) {
+                writer.write("\\setboolean{mandatoryhandout}{false}\n");
+            }
+            writer.write("\n");
             writer.write("\\newcommand{\\presentationContent}{%\n");
             writer.write("Der Vortrag behandelte das Thema \\presentationtitle.\\\\[2ex]\n");
             writer.write("\\notes{%\n");
