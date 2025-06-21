@@ -8,7 +8,7 @@ public class LectureExtractor implements Function<OCEntry, String> {
 
     public static final LectureExtractor INSTANCE = new LectureExtractor();
 
-    private static final String LECTURE_PATTERN = ".+ \\((Vorlesung|E-Learning)\\) \\| (\\w|\\s)+";
+    private static final String LECTURE_PATTERN = ".+ \\((Vorlesung|E-Learning|Hybrid-Vorlesung)\\) \\| (\\w|\\s|,)+";
 
     private LectureExtractor() {}
 

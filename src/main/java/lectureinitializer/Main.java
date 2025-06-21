@@ -257,7 +257,7 @@ public class Main {
             List<String> currentParticipants = new LinkedList<String>();
             line = reader.readLine();
             while (line != null) {
-                if (line.isBlank() || !line.startsWith("Seite") && !line.matches("\\w\\w\\w\\w\\d\\d\\d\\w .+")) {
+                if (line.isBlank() || !line.startsWith("Seite") && !line.matches("\\w\\w\\w\\w\\d\\d\\d\\w.*")) {
                     line = reader.readLine();
                     continue;
                 }
@@ -270,7 +270,11 @@ public class Main {
                         currentParticipants = new LinkedList<String>();
                     }
                 } else {
-                    currentParticipants.add(line.substring(9));
+                    String entryLine = line;
+                    while (entryLine.trim().length() < 9) {
+                        entryLine += reader.readLine();
+                    }
+                    currentParticipants.add(entryLine.substring(8).trim());
                 }
                 line = reader.readLine();
             }
@@ -450,9 +454,12 @@ public class Main {
         final List<OCEntry> sorted = new ArrayList<OCEntry>(calendarEntries);
         Collections.sort(sorted);
         final OCEntry calendarEntry = sorted.getFirst();
-        final int year = calendarEntry.start().getYear() % 100;
-        final int quarter =
-            calendarEntry.start().getMonthValue() / 3 + (calendarEntry.start().getMonthValue() % 3 == 0 ? 0 : 1);
+        int year = calendarEntry.start().getYear() % 100;
+        int quarter = calendarEntry.start().getMonthValue() / 3 + 1;
+        if (quarter > 4) {
+            year++;
+            quarter -= 4;
+        }
         return String.format("%02d%d", year, quarter);
     }
 
