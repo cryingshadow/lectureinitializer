@@ -46,7 +46,7 @@ public class Main {
         if (options.containsKey(Flag.CLASSFILE)) {
             final File classFile = new File(options.get(Flag.CLASSFILE));
             if (options.containsKey(Flag.ASSIGNMENT)) {
-                TalkAssignment.prepareTalk(new File(options.get(Flag.ASSIGNMENT)), classFile);
+                TalkAssignments.prepareTalk(new File(options.get(Flag.ASSIGNMENT)), classFile);
             } else {
                 ParticipantsAndDates.writeParticipantsLists(classFile);
             }
@@ -58,65 +58,6 @@ public class Main {
         } else {
             QuizQuestions.transformQuizFile(new File(options.get(Flag.QUIZ)), new File(options.get(Flag.OUTPUT)));
         }
-    }
-
-    static List<TalkAssignment> toAssignmentsWithDates(
-        final List<TopicAssignment> topicAssignments,
-        final List<LocalDateTime> dates
-    ) {
-        final Map<LocalDate, List<LocalDateTime>> datesByDate =
-            dates.stream().collect(
-                Collectors.toMap(
-                    LocalDateTime::toLocalDate,
-                    d -> List.of(d),
-                    (l1, l2) -> Stream.concat(l1.stream(), l2.stream()).toList()
-                )
-            );
-        int availableDates = dates.size();
-        final int neededDates = topicAssignments.size();
-        final List<LocalDate> keys = new ArrayList<LocalDate>(datesByDate.keySet());
-        Collections.sort(keys);
-        for (final LocalDate key : keys) {
-            final int datesAtDate = datesByDate.get(key).size();
-            if (datesAtDate > availableDates - neededDates) {
-                break;
-            } else {
-                availableDates -= datesAtDate;
-                datesByDate.remove(key);
-            }
-        }
-        final List<TalkAssignment> result = new LinkedList<TalkAssignment>();
-        int i = 0;
-        keys.retainAll(datesByDate.keySet());
-        outer: for (final LocalDate key : keys) {
-            for (final LocalDateTime date : datesByDate.get(key)) {
-                result.add(new TalkAssignment(topicAssignments.get(i), date));
-                i++;
-                if (i == neededDates) {
-                    break outer;
-                }
-            }
-        }
-        return result;
-    }
-
-    static Stream<LocalDateTime> toLocalDateTime(final String dateString) {
-        final int multiplicity = Integer.parseInt(dateString.substring(dateString.length() - 1));
-        final LocalDateTime start =
-            LocalDate.of(
-                2000 + Integer.parseInt(dateString.substring(0, 2)),
-                Integer.parseInt(dateString.substring(2, 4)),
-                Integer.parseInt(dateString.substring(4, 6))
-            ).atTime(Integer.parseInt(dateString.substring(6, 8)), Integer.parseInt(dateString.substring(8, 10)));
-        final List<LocalDateTime> result = new LinkedList<LocalDateTime>();
-        int numOfBreaks = 0;
-        for (int i = 0; i < multiplicity; i++) {
-            if (i > 0 && i % 2 == 0) {
-                numOfBreaks++;
-            }
-            result.add(start.plusMinutes(i * 45 + numOfBreaks * 15));
-        }
-        return result.stream();
     }
 
     private static String helpText() {

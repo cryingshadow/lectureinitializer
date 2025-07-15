@@ -6,14 +6,15 @@ package lectureinitializer;
 import java.io.*;
 import java.time.*;
 import java.util.*;
+import java.util.stream.*;
 
 import org.testng.*;
 import org.testng.annotations.*;
 
-public class MainTest {
+public class TalkAssignmentsTest {
 
     @DataProvider
-    public Object[][] toAssignmentsWithDatesData() {
+    public Object[][] talkAssignmentsData() {
         final TopicAssignment a1 = new TopicAssignment("P1", "T1");
         final TopicAssignment a2 = new TopicAssignment("P2", "T2");
         final TopicAssignment a3 = new TopicAssignment("P3", "T3");
@@ -34,9 +35,20 @@ public class MainTest {
         final LocalDateTime d11 = LocalDateTime.of(2024, 10, 13, 11, 30);
         final LocalDateTime d12 = LocalDateTime.of(2024, 10, 13, 12, 15);
         return new Object[][] {
-            {List.of(a1), List.of(d1, d2, d3, d4), List.of(new TalkAssignment(a1, d1))},
             {
-                List.of(a1, a2, a3, a4, a5, a6, a7),
+                new BufferedReader(new StringReader("P1 -> T1")),
+                List.of(d1, d2, d3, d4),
+                List.of(new TalkAssignment(a1, d1))
+            },
+            {
+                new BufferedReader(
+                    new StringReader(
+                        List.of(a1, a2, a3, a4, a5, a6, a7)
+                        .stream()
+                        .map(ass -> String.format("%s -> %s", ass.participant(), ass.topic()))
+                        .collect(Collectors.joining("\n"))
+                    )
+                ),
                 List.of(d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12),
                 List.of(
                     new TalkAssignment(a1, d5),
@@ -51,13 +63,13 @@ public class MainTest {
         };
     }
 
-    @Test(dataProvider="toAssignmentsWithDatesData")
-    public void toAssignmentsWithDatesTest(
-        final List<TopicAssignment> assignments,
+    @Test(dataProvider="talkAssignmentsData")
+    public void talkAssignmentsTest(
+        final BufferedReader assignmentReader,
         final List<LocalDateTime> dates,
         final List<TalkAssignment> expected
-    ) {
-        Assert.assertEquals(Main.toAssignmentsWithDates(assignments, dates), expected);
+    ) throws IOException {
+        Assert.assertEquals(new TalkAssignments(assignmentReader, dates), expected);
     }
 
     @DataProvider
@@ -77,7 +89,7 @@ public class MainTest {
 
     @Test(dataProvider="toLocalDateTimeData")
     public void toLocalDateTimeTest(final String date, final List<LocalDateTime> expected) throws IOException {
-        Assert.assertEquals(Main.toLocalDateTime(date).toList(), expected);
+        Assert.assertEquals(TalkAssignments.toLocalDateTime(date).toList(), expected);
     }
 
 }
