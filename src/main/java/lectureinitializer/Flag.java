@@ -6,9 +6,11 @@ public enum Flag implements Parameter {
 
     ASSIGNMENT("a", "assignment", "File containing the assignment of topics to participants."),
 
+    ATTENDANCE("t", "attendance", "File containing the attendance list for the lecture."),
+
     CLASSFILE("c", "classfile", "File containing the participants and dates of the lecture."),
 
-    EXPORT("e", "export", "CSV-export of the outlook calendar."),
+    EXPORT("e", "export", "CSV-export of the outlook calendar or teams participants."),
 
     OUTPUT("o", "output", "File for output."),
 
