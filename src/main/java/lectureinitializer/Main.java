@@ -2,7 +2,6 @@ package lectureinitializer;
 
 import java.io.*;
 import java.lang.reflect.*;
-import java.time.*;
 import java.util.*;
 import java.util.stream.*;
 
@@ -53,6 +52,11 @@ public class Main {
         } else if (options.containsKey(Flag.PARTICIPANTS)) {
             CalendarExport.createClassFiles(
                 new File(options.get(Flag.PARTICIPANTS)),
+                new File(options.get(Flag.EXPORT))
+            );
+        } else if (options.containsKey(Flag.ATTENDANCE)) {
+            AttendanceListUpdater.updateAttendanceList(
+                new File(options.get(Flag.ATTENDANCE)),
                 new File(options.get(Flag.EXPORT))
             );
         } else {
