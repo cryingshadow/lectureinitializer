@@ -7,15 +7,15 @@ import java.util.*;
 
 import ocp.*;
 
-public class CalendarExport extends LinkedHashMap<String, List<OCEntry>>{
+public class CalendarExport extends LinkedHashMap<Lecture, List<OCEntry>>{
 
     private static final long serialVersionUID = 1L;
 
     public static void createClassFiles(final File participantsList, final File calendarExport) throws IOException {
-        final Map<String, List<String>> participantsByEvent = new ParticipantsList(participantsList);
+        final Map<Lecture, List<String>> participantsByEvent = new ParticipantsList(participantsList);
         final CalendarExport calendarEntriesByEvent = CalendarExport.parseCalendarExport(calendarExport);
-        for (final Map.Entry<String, List<String>> participantsEntries : participantsByEvent.entrySet()) {
-            final String lecture = participantsEntries.getKey();
+        for (final Map.Entry<Lecture, List<String>> participantsEntries : participantsByEvent.entrySet()) {
+            final Lecture lecture = participantsEntries.getKey();
             if (calendarEntriesByEvent.containsKey(lecture)) {
                 final List<OCEntry> calendarEntries = calendarEntriesByEvent.get(lecture);
                 final File classFile =
@@ -52,11 +52,11 @@ public class CalendarExport extends LinkedHashMap<String, List<OCEntry>>{
     }
 
     private static File computeClassFile(
-        final String lecture,
+        final Lecture lecture,
         final List<OCEntry> calendarEntries,
         final Path lecturesPath
     ) {
-        final String folder = CalendarExport.folderForLecture(lecture.substring(0, lecture.indexOf('|') - 1));
+        final String folder = CalendarExport.folderForLecture(lecture.title());
         final String classFileName = CalendarExport.toClassFileName(lecture, calendarEntries);
         return lecturesPath.resolve(folder).resolve("classes").resolve(classFileName).toFile();
     }
@@ -107,13 +107,12 @@ public class CalendarExport extends LinkedHashMap<String, List<OCEntry>>{
         );
     }
 
-    private static String toClassFileName(final String lecture, final List<OCEntry> calendarEntries) {
-        final String[] groups = lecture.substring(lecture.indexOf('|') + 2).split(", ");
+    private static String toClassFileName(final Lecture lecture, final List<OCEntry> calendarEntries) {
         final TreeSet<String> prefixes = new TreeSet<String>();
         final TreeSet<String> infixes = new TreeSet<String>();
         final TreeSet<Integer> years = new TreeSet<Integer>();
         final TreeSet<String> suffixes = new TreeSet<String>();
-        for (final String group : groups) {
+        for (final String group : lecture.groups()) {
             prefixes.add(group.substring(0, 2).toLowerCase());
             infixes.add(group.substring(2, 4).toLowerCase());
             years.add(Integer.parseInt(group.substring(4, 7)));
@@ -150,7 +149,7 @@ public class CalendarExport extends LinkedHashMap<String, List<OCEntry>>{
         return String.format("%02d%d", year, quarter);
     }
 
-    private CalendarExport(final Map<String, List<OCEntry>> map) {
+    private CalendarExport(final Map<Lecture, List<OCEntry>> map) {
         super(map);
     }
 

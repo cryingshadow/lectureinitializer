@@ -1,10 +1,11 @@
 package lectureinitializer;
 
+import java.util.*;
 import java.util.function.*;
 
 import ocp.*;
 
-public class LectureExtractor implements Function<OCEntry, String> {
+public class LectureExtractor implements Function<OCEntry, Lecture> {
 
     public static final LectureExtractor INSTANCE = new LectureExtractor();
 
@@ -13,12 +14,14 @@ public class LectureExtractor implements Function<OCEntry, String> {
     private LectureExtractor() {}
 
     @Override
-    public String apply(final OCEntry entry) {
+    public Lecture apply(final OCEntry entry) {
         final String subject = entry.subject();
         if (!subject.matches(LectureExtractor.LECTURE_PATTERN)) {
-            return "other";
+            return new Lecture("other", Set.of());
         }
-        return subject.substring(0, subject.indexOf(" (")) + subject.substring(subject.indexOf(") ") + 1);
+        return Lecture.parse(
+            subject.substring(0, subject.indexOf(" (")) + subject.substring(subject.indexOf(") ") + 1)
+        );
     }
 
 }

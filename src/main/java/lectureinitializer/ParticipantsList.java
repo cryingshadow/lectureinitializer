@@ -3,23 +3,23 @@ package lectureinitializer;
 import java.io.*;
 import java.util.*;
 
-public class ParticipantsList extends LinkedHashMap<String, List<String>> {
+public class ParticipantsList extends LinkedHashMap<Lecture, List<String>> {
 
     private static final long serialVersionUID = 1L;
 
-    private static String extractLecture(final String line, final BufferedReader reader) throws IOException {
+    private static Lecture extractLecture(final String line, final BufferedReader reader) throws IOException {
         String lectureLine = line;
         while (lectureLine.chars().filter(i -> i == '|').count() != 2) {
             lectureLine += reader.readLine();
         }
-        return lectureLine.substring(0, line.lastIndexOf('|') - 1);
+        return Lecture.parse(lectureLine.substring(0, lectureLine.lastIndexOf('|') - 1));
     }
 
     public ParticipantsList(final File participantsList) throws IOException {
         super();
         try (BufferedReader reader = new BufferedReader(new FileReader(participantsList))) {
             String line = reader.readLine();
-            String currentLecture = ParticipantsList.extractLecture(line, reader);
+            Lecture currentLecture = ParticipantsList.extractLecture(line, reader);
             List<String> currentParticipants = new LinkedList<String>();
             line = reader.readLine();
             while (line != null) {
@@ -30,10 +30,13 @@ public class ParticipantsList extends LinkedHashMap<String, List<String>> {
                 if (line.startsWith("Seite")) {
                     reader.readLine();
                     line = reader.readLine().substring(1);
-                    if (!line.isBlank() && !currentLecture.equals(ParticipantsList.extractLecture(line, reader))) {
-                        this.put(currentLecture, currentParticipants);
-                        currentLecture = ParticipantsList.extractLecture(line, reader);
-                        currentParticipants = new LinkedList<String>();
+                    if (!line.isBlank()) {
+                        Lecture lectureOnPage = ParticipantsList.extractLecture(line, reader);
+                        if (!currentLecture.equals(lectureOnPage)) {
+                            this.put(currentLecture, currentParticipants);
+                            currentLecture = lectureOnPage;
+                            currentParticipants = new LinkedList<String>();
+                        }
                     }
                 } else {
                     String entryLine = line;
