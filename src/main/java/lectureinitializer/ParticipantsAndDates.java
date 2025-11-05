@@ -60,55 +60,122 @@ public record ParticipantsAndDates(String[] participants, String[] dates) {
                 }
             }
         }
-        final File groups = root.resolve("groups.sh").toFile();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(groups))) {
-            writer.write("#!/bin/bash\n\n");
-            writer.write("if [[ $# -eq 2 ]]; then\n");
-            writer.write("  java -jar ../../../../nameandgrouppicker.jar GROUPS -n $1.txt --count $2\n");
-            writer.write(" else if [[ $# -eq 3 ]]; then\n");
-            writer.write("  java -jar ../../../../nameandgrouppicker.jar GROUPS -n $1.txt --min $2 --max $3\n");
-            writer.write("else\n");
-            writer.write("  echo \"Illegal number of parameters\" >&2\n");
-            writer.write("  exit 2\n");
-            writer.write("fi\n");
-            writer.write("fi\n");
-        }
-        groups.setExecutable(true);
-        final File pick = root.resolve("pick.sh").toFile();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(pick))) {
-            writer.write("#!/bin/bash\n\n");
-            writer.write("java -jar ../../../../nameandgrouppicker.jar PICK -n $1.txt -f frequencies.txt\n");
-        }
-        pick.setExecutable(true);
+        ParticipantsAndDates.writeExecutableScript(
+            root,
+            "groups.sh",
+            List.of(
+                "#!/bin/bash",
+                "",
+                "if [[ $# -eq 2 ]]; then",
+                "  java -jar ../../../../nameandgrouppicker.jar GROUPS -n $1.txt --count $2",
+                " else if [[ $# -eq 3 ]]; then",
+                "  java -jar ../../../../nameandgrouppicker.jar GROUPS -n $1.txt --min $2 --max $3",
+                "else",
+                "  echo \"Illegal number of parameters\" >&2",
+                "  exit 2",
+                "fi",
+                "fi"
+            )
+        );
+        ParticipantsAndDates.writeExecutableScript(
+            root,
+            "pick.sh",
+            List.of(
+                "#!/bin/bash",
+                "",
+                "java -jar ../../../../nameandgrouppicker.jar PICK -n $1.txt -f frequencies.txt"
+            )
+        );
         final File metaFile = root.getParent().resolve("meta.txt").toFile();
         try (BufferedReader reader = new BufferedReader(new FileReader(metaFile))) {
             reader.readLine();
             reader.readLine();
             final String thirdLine = reader.readLine();
-            if (thirdLine != null && !thirdLine.isBlank() && !"EXAM".equals(thirdLine)) {
-                final int numOfTopics = Integer.parseInt(reader.readLine());
-                final String[] topics = new String[numOfTopics];
-                for (int i = 0; i < numOfTopics; i++) {
-                    topics[i] = reader.readLine().split(";")[0];
-                }
-                try (
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(root.resolve("preferences.txt").toFile()))
-                ) {
-                    writer.write(String.valueOf(numOfTopics));
-                    writer.write("\n");
-                    for (final String topic : topics) {
-                        writer.write(topic);
-                        writer.write("\n");
+            if (thirdLine != null && !thirdLine.isBlank()) {
+                if ("EXAM".equals(thirdLine)) {
+                    Path exercisesPath = root.resolve("exercises");
+                    exercisesPath.toFile().mkdir();
+                    ParticipantsAndDates.writeExecutableScript(
+                        exercisesPath,
+                        "exgen.sh",
+                        List.of(
+                            "#!/bin/bash",
+                            "",
+                            "cd ../../../exercises",
+                            "",
+                            "for d in */ ; do",
+                            "  cd $d",
+                            "  . build.sh",
+                            "  cd ..",
+                            "done",
+                            "",
+                            String.format("cd ../classes/%s/exercises", root.getFileName().toString())
+                        )
+                    );
+                    ParticipantsAndDates.writeExecutableScript(
+                        exercisesPath,
+                        "build.sh",
+                        List.of(
+                            "#!/bin/bash",
+                            "",
+                            ". exgen.sh",
+                            "",
+                            "for i in exercise*.tex; do",
+                            "    pdflatex \"$i\"",
+                            "    pdflatex \"$i\"",
+                            "done",
+                            "",
+                            "for i in solution*.tex; do",
+                            "    pdflatex \"$i\"",
+                            "    pdflatex \"$i\"",
+                            "done",
+                            "",
+                            "for i in exampleExam*.tex; do",
+                            "    pdflatex \"$i\"",
+                            "    pdflatex \"$i\"",
+                            "done"
+                        )
+                    );
+                } else {
+                    final int numOfTopics = Integer.parseInt(reader.readLine());
+                    final String[] topics = new String[numOfTopics];
+                    for (int i = 0; i < numOfTopics; i++) {
+                        topics[i] = reader.readLine().split(";")[0];
                     }
-                    writer.write(String.valueOf(participantsAndDates.participants().length));
-                    writer.write("\n");
-                    for (final String participant : participantsAndDates.participants()) {
-                        writer.write(participant);
-                        writer.write(";\n");
+                    try (
+                        BufferedWriter writer = new BufferedWriter(new FileWriter(root.resolve("preferences.txt").toFile()))
+                    ) {
+                        writer.write(String.valueOf(numOfTopics));
+                        writer.write("\n");
+                        for (final String topic : topics) {
+                            writer.write(topic);
+                            writer.write("\n");
+                        }
+                        writer.write(String.valueOf(participantsAndDates.participants().length));
+                        writer.write("\n");
+                        for (final String participant : participantsAndDates.participants()) {
+                            writer.write(participant);
+                            writer.write(";\n");
+                        }
                     }
                 }
             }
         }
+    }
+
+    private static void writeExecutableScript(
+        final Path root,
+        final String name,
+        final List<String> lines
+    ) throws IOException {
+        final File script = root.resolve(name).toFile();
+        try (final BufferedWriter writer = new BufferedWriter(new FileWriter(script))) {
+            for (String line : lines) {
+                writer.write(line);
+                writer.write("\n");
+            }
+        }
+        script.setExecutable(true);
     }
 
 }
